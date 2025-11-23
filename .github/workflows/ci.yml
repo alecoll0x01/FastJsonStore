@@ -34,11 +34,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        ./vcpkg/vcpkg install nlohmann-json gtest
+        ./vcpkg/vcpkg install nlohmann-json gtest --triplet x64-windows
 
     - name: Configure CMake
       run: |
-        cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+        cmake -B build -S . \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
