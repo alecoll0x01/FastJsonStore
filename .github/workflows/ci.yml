@@ -10,13 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            triplet: x64-linux
-          - os: macos-latest
-            triplet: x64-osx
-          - os: windows-latest
-            triplet: x64-windows
+        os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [Debug, Release]
 
     runs-on: ${{ matrix.os }}
@@ -24,26 +18,41 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install vcpkg
+    # ---------- VCPKG LINUX / MACOS ----------
+    - name: Install vcpkg (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        if [ "${{ runner.os }}" = "Windows" ]; then \
-            .\bootstrap-vcpkg.bat; \
-        else \
-            ./bootstrap-vcpkg.sh; \
-        fi
+        ./vcpkg/bootstrap-vcpkg.sh
+        ./vcpkg/vcpkg integrate install
+        ./vcpkg/vcpkg install nlohmann-json gtest --triplet x64-linux
 
-    - name: Install dependencies
+    # ---------- VCPKG WINDOWS ----------
+    - name: Install vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: |
-        ./vcpkg/vcpkg install nlohmann-json gtest --triplet ${{ matrix.triplet }}
+        git clone https://github.com/Microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg integrate install
+        .\vcpkg\vcpkg install nlohmann-json gtest --triplet x64-windows
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . `
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+      shell: pwsh
+      if: runner.os == 'Windows'
 
     - name: Configure CMake
       run: |
         cmake -B build -S . \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
-          -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+      shell: bash
+      if: runner.os != 'Windows'
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
