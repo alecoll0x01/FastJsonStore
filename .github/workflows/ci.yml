@@ -18,41 +18,27 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # ---------- VCPKG LINUX / MACOS ----------
     - name: Install vcpkg (Linux/macOS)
       if: runner.os != 'Windows'
-      shell: bash
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
         ./vcpkg/bootstrap-vcpkg.sh
         ./vcpkg/vcpkg integrate install
-        ./vcpkg/vcpkg install nlohmann-json gtest --triplet x64-linux
 
-    # ---------- VCPKG WINDOWS ----------
     - name: Install vcpkg (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
         .\vcpkg\bootstrap-vcpkg.bat
         .\vcpkg\vcpkg integrate install
-        .\vcpkg\vcpkg install nlohmann-json gtest --triplet x64-windows
+
+    - name: Install dependencies
+      run: |
+        ./vcpkg/vcpkg install nlohmann-json gtest
 
     - name: Configure CMake
       run: |
-        cmake -B build -S . `
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
-        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-      shell: pwsh
-      if: runner.os == 'Windows'
-
-    - name: Configure CMake
-      run: |
-        cmake -B build -S . \
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-      shell: bash
-      if: runner.os != 'Windows'
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
